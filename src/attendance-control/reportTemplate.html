@@ -1,0 +1,93 @@
+<html>
+<head>
+	<style>
+		body {
+			width: 100%;
+			margin: 20px 30px ;
+		}
+
+		table {
+			width: 40%;
+			border-collapse: collapse;
+		}
+
+		td,
+		th {
+			border: 1px solid rgb(136, 127, 127);
+			padding: 5px;
+			text-align: center;
+		}
+
+		th {
+			width: 5px;
+		}
+
+		th.vertical-text {
+			writing-mode: vertical-lr;
+			transform: rotate(180deg);
+			text-align: center;
+			min-height: 120px;
+			width: 10px;
+		}
+
+		.header {
+			text-align: center;
+			margin-bottom: 10px;
+		}
+
+		.column-flex {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 2rem;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="header">
+		<h3>SISTEMA DE CONTROL DE PERSONAL</h3>
+		<h2>REPORTE DE ASISTENCIAS</h2>
+	</div>
+
+	<p>Nombre Completo: {{name}} {{lastName}}</p>
+	<p>CI: {{ci}}</p>
+
+	<div class="column-flex">
+		<table>
+			<thead>
+				<tr>
+					<th colspan="2">Horario Establecido</th>
+					<th colspan="4">Horario Registrado</th>
+				</tr>
+				<tr>
+					<th>Hora</th>
+					<th class="vertical-text">Tolerancia</th>
+					<th>Marcado</th>
+					<th class="vertical-text">Infracción</th>
+					<th>Tipo</th>
+					<th>Turno</th>
+				</tr>
+			</thead>
+			<tbody>
+
+				{{#each attendanceDetail}}	
+				<tr>
+					<td colspan="6">FECHA: {{this.date}}</td>
+				</tr>
+				{{#each this.entries}}
+				<tr>
+					<td>{{this.time}}</td>
+					<td>{{this.established}}</td>
+					<td>{{this.registered}}</td>
+					<td>{{this.infringement}}</td>
+					<td>{{this.type}}</td>
+					<td>{{this.shift}}</td>
+				</tr>
+				{{/each}}
+				{{/each}}
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>
+<!-- "build": "nest build", -->

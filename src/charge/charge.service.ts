@@ -112,7 +112,7 @@ export class ChargeService {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} charge`;
+  async delete() {
+    await this.chargeModel.deleteMany({}).exec();
   }
 }

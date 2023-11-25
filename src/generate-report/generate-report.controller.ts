@@ -19,9 +19,9 @@ export class GenerateReportController {
     summary: 'Generacion de Reporte de Control de Asistencia en PDF',
     description: 'Genera el reporte en pdf del control de asistena de un personal, con el atributo personalId del control de asistencia'
   })
-  @Post('pdf-attendance/download/:personalId')
-  async downloadPdf(@Param('personalId') personalId: string, @Res() res): Promise<void> {
-    const buffer = await this.attendanceControlService.findOneReport(personalId);
+  @Get('pdf-attendance/download')
+  async downloadPdf(@Res() res): Promise<void> {
+    const buffer = await this.attendanceControlService.findOneReport();
 
     res.set({
       'Content-Type': 'application/pdf',

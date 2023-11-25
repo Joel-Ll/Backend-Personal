@@ -11,6 +11,9 @@ export class Personal extends Document {
 	@Prop({ unique: false })
 	lastName: string;
 
+	@Prop({ unique: false })
+	gender: string;
+
 	@Prop({ unique: true })
 	ci: string;
 
@@ -35,18 +38,20 @@ export class Personal extends Document {
 	@Prop({ required: true })
 	schedule: string;
 
+	@Prop({ unique: false, default: 0 })
+	level: Number;
+
 	@Prop({ default: '' })
 	file?: string;
 	
 	@Prop({ default: true })
 	isActive: boolean;
-	
 
-	// @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Charge.name }) 
-	// chargeRef: Charge; 
+	@Prop()
+  createdAt?: Date;
 
-	// @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Schedule.name }) 
-	// scheduleref: Schedule; 
+  @Prop()
+  updatedAt?: Date;
 }
 
 export const PersonalSchema = SchemaFactory.createForClass( Personal )

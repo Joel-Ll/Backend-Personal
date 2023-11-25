@@ -19,7 +19,7 @@ export class ApiController {
 		try {
 			console.log(loginCentralDTO)
 			const response = await this.apiService.loginAuthCentral(loginCentralDTO)
-			res.send(response);
+			res.status(200).send(response);
 		} catch (error) {
 			console.log(error)
 			throw error

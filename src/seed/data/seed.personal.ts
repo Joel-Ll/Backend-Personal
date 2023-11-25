@@ -16,7 +16,7 @@ const generateUniqueNumericStrings = (count: number, length = 4): Set<string> =>
 	return uniqueNumbers;
 };
 
-const uniqueNumbers = generateUniqueNumericStrings(50000, 5);
+const uniqueNumbers = generateUniqueNumericStrings(30, 5);
 
 const nationalities = [
 	'Bolivia',
@@ -45,9 +45,9 @@ const generateRandomUnitys = () => {
 }
 
 const charges = [
-	'652fe36062c829c3211b1923',
-	'652fe37462c829c3211b1925',
-	'652fe38462c829c3211b1927',
+	'655e6f7c3b3d53788ead9190',
+	'655e6fa03b3d53788ead9195',
+	'655e6fc03b3d53788ead9198',
 ]
 
 const generateRandomCharge = () => {
@@ -56,9 +56,7 @@ const generateRandomCharge = () => {
 }
 
 const schedules = [
-	'6540350dbdbea3f0cdff27f6',
-	'65403543bdbea3f0cdff27f9',
-	'65403552bdbea3f0cdff27fc'
+	'655e70193b3d53788ead91a6',
 ]		
 
 const generateRandomSchedule = () => {
@@ -66,13 +64,16 @@ const generateRandomSchedule = () => {
 	return schedules[randomIndex]
 }
 
+
+
 export const generatePersonnelData = (): IPersonal[] => {
 	const personnel = [];
 	const uniqueNumbersArray = [...uniqueNumbers];
 
-	for (let i = 0; i < 50000; i++) {
+	for (let i = 0; i < 30; i++) {
 		const name = faker.person.firstName();
 		const lastName = faker.person.lastName();
+		const gender = faker.person.gender();
 		const ci = uniqueNumbersArray[i];
 		const emailLocalPart = `${name}.${lastName}.${ci}`.toLowerCase().replace(/\s+/g, '');
 		const email = `${emailLocalPart}@example.fakerjs.dev`;
@@ -86,6 +87,7 @@ export const generatePersonnelData = (): IPersonal[] => {
 		const person = {
 			name,
 			lastName,
+			gender,
 			ci,
 			email,
 			phone,
@@ -95,6 +97,7 @@ export const generatePersonnelData = (): IPersonal[] => {
 			charge,
 			file: '',
 			schedule,
+			level: '1',
 			isActive: true
 		};
 		personnel.push(person);

@@ -7,6 +7,9 @@ export class Charge extends Document {
 	name: string;
 
 	@Prop()
+	salary: string;
+
+	@Prop()
 	description: string;
 
 	@Prop({ default: true })

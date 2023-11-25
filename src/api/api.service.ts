@@ -5,7 +5,6 @@ import { LoginCentralDTO } from './api.dto';
 @Injectable()
 export class ApiService {
 	private apiSeguridad = process.env.API_SEGURIDAD;
-	// private apiUnitys = process.env.API_UNITYS;
 
 	constructor(
 		private readonly httpService: HttpService,

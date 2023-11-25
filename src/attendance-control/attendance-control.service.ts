@@ -6,6 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Personal } from 'src/personal/schemas/personal.schema';
 import { Model } from 'mongoose';
 import { Schedule } from 'src/schedule/schemas/schedule.schema';
+import { Charge } from 'src/charge/schemas/charge.schema';
 import { PersonalAttendance } from './schemas/attendance-control.schema';
 import { AttendanceStatus, ControlPoints, DateTimeInfo } from './interfaces/DateTimeInfo.interface';
 // import * as PDFDocument from 'pdfkit';
@@ -15,7 +16,7 @@ import * as path from 'path';
 import { GenerateReportService } from 'src/generate-report/generate-report.service';
 import { throwError } from 'rxjs';
 import { FilterReportAttendace } from 'src/common/dto/filter.dto';
-import { convertToISOFormat, formatDate, getDaysArrayByWeek, isDayInSchedule, userAssignedToSpecialSchedule } from 'src/attendance-control/helpers'
+import { calTotalAportaciones, calcAporteNacSol, calcRcIva, calcSancionAtrasos, calcSancionFalta, calcTotalCategory, convertToISOFormat, extractMinutes, formatCategory, formatDate, formatMonth, getDaysArrayByWeek, isDayInSchedule, isOnLicense, isSpecialDayActive, userAssignedToSpecialSchedule } from 'src/attendance-control/helpers'
 import { type } from 'os';
 import { LicenseService } from 'src/license/license.service';
 import { lineCap } from 'pdfkit';
@@ -25,6 +26,9 @@ import { lineCap } from 'pdfkit';
 
 @Injectable()
 export class AttendanceControlService {
+  private attendanceReport: any;
+  private planillaSueldos1: any;
+  
 
   // private reportTemplate: HandlebarsTemplateDelegate;
   constructor(
@@ -40,13 +44,11 @@ export class AttendanceControlService {
 
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<Schedule>,
-  ) {
 
-    // const templatePath = '/home/joel/Escritorio/control-personal-2/control-personal-v1/src/attendance-control/reportTemplate.html';
-    // const source = fs.readFileSync(templatePath, 'utf-8');
+    @InjectModel(Charge.name)
+    private readonly chargeModule: Model<Charge>,
 
-    // this.reportTemplate = Handlebars.compile(source);
-  }
+  ) {}
 
   create(createAttendanceControlDto: CreateAttendanceControlDto) {
     return 'This action adds a new attendanceControl';
@@ -60,14 +62,25 @@ export class AttendanceControlService {
     Funcion para generar los reportes de acuerdo a la fecha establecida 
     con los parametros de busqueda de fecha Inicial - Fecha Final - IdPersonal
   */
+  // this.attendanceReport = ;
+
   async findReportAttendance(filterReportAttendace: FilterReportAttendace) {
+    this.attendanceReport = [];
+    this.planillaSueldos1 = '';
+
     const { initialDate, endDate, personalId } = filterReportAttendace;
 
     const initialDateObj = new Date(initialDate);
+    console.log({ initialDateObj });
+
+
     const endDateObj = new Date(endDate);
     const { attendanceDetail } = await this.findOne(personalId);
-    console.log({ attendanceDetail });
-    let attendanceReport = [];
+    const personalInfo = await this.personalModel.findById(personalId);
+    const { name, lastName, charge, level, createdAt } = personalInfo
+    const chargeInfo = await this.chargeModule.findById(charge);
+
+    // let attendanceReport = [];
 
     // Validacion de fechas
     if (endDateObj < initialDateObj) {
@@ -80,13 +93,10 @@ export class AttendanceControlService {
 
     // Obtenemos el registro del personal "personalId" con su primer fecha de registro y lo convertimos de tipo date
     const initDate = attendanceDetail[0].date;
-    console.log({ initDate });
     const dateIsoInit = convertToISOFormat(initDate);
-    console.log( { dateIsoInit } )
+    // console.log( { dateIsoInit } )
 
     // Obtenemos la fecha actual
-    const { date } = this.getCurrentDateTimeInfo();
-    console.log({ date });
 
     // Validamos si las fechas de consultas se encuentran en los registros... Se tiene el siguiente ej
 
@@ -97,12 +107,12 @@ export class AttendanceControlService {
           [Fecha inicio consulta]                                      [Fecha fin consulta]
     */
 
-
+    // Funciona ---------------
     // const validDate = initialDateObj >= dateIsoInit && endDateObj <= date;
 
     // if (!validDate) {
     //   throw new BadRequestException('No hay registros para la fecha seleccionada')
-    // }
+    // } ------------------------
 
     /*
       En este punto tenemos las fechas de consulta que se encuentran en los registros...
@@ -114,44 +124,156 @@ export class AttendanceControlService {
 
     // Informacion de licencias del personal
     const license = await this.licenseService.findAll(personalId);
-    // console.log(license);
 
     // Obtener información del horario del personal...
     const { schedule } = await this.personalModel.findById(personalId);
     const scheduleInfo = await this.scheduleModel.findById(schedule);
-    // console.log( scheduleInfo ); 
+    const { scheduleNormal, scheduleSpecial } = scheduleInfo;
+    const normalWorkDaysSet = new Set(scheduleNormal.map(schedule => schedule.day));
+    const specialWorkDaysSet = new Set(scheduleSpecial.map(schedule => schedule.day));
 
     // Obtener todos los días laborables como números de la semana en el rango de fechas
-    const daysOfWeek = getDaysArrayByWeek(initialDateObj, endDateObj);
+    const daysOfWeek = getDaysArrayByWeek(initialDateObj, endDateObj, normalWorkDaysSet, specialWorkDaysSet, date => isSpecialDayActive(scheduleInfo.scheduleSpecial, date, personalId));
 
     // Iterar sobre todos los días laborables
-    daysOfWeek.forEach(({ date, dayOfWeek }) => {
+    let totalInasistencias = 0;
+    let totalInfraccionesMinutos = 0;
+    let diasMensuales = 0;
+
+    daysOfWeek.forEach(({ date, dayOfWeek, isSpecial }) => {
+      let nameSpecial: string;
+      diasMensuales++;
+
       const formattedDate = formatDate(date);
-    
-      let scheduleToCheck = 'Horario normal';
 
       const attendanceRecord = attendanceDetail.find(detail => detail.date === formattedDate);
-      console.log( { attendanceRecord });
-
-      // Primero verificamos si el día pertenece a un horario especial
-      if (isDayInSchedule(dayOfWeek, scheduleInfo.scheduleSpecial) && userAssignedToSpecialSchedule(personalId, scheduleInfo.scheduleSpecial)) {
-        scheduleToCheck = 'Horario especial';
-      } 
-      
-      const reportItem: any = {
-        date: formattedDate,
-        type: attendanceRecord ? 'Asistencia' : 'Inasistencia',
-        entrances: attendanceRecord?.entrances || [],
-        exits: attendanceRecord?.exits || [],
-      };
-
-      if (scheduleToCheck === 'Horario especial') {
-        reportItem.specialDay = scheduleToCheck;
+      if (attendanceRecord !== undefined) {
+        nameSpecial = attendanceRecord.specialDay
       }
 
-      attendanceReport.push(reportItem);
+      const reportItem: any = {
+        date: formattedDate,
+        specialDay: isSpecial ? nameSpecial : '----',
+        type: isOnLicense(license, date) ? 'Licencia' : (attendanceRecord ? 'Asistencia' : 'Inasistencia'),
+        hourEntryMorning: '--:--',
+        entryMorning: '--:--',
+        toleranceEntryMoring: '----',
+        infraccionEntryMorning: '----',
+        hourExitMorning: '--:--',
+        exitMorning: '--:--',
+        hourEntryAfternoon: '--:--',
+        entryAfternoon: '--:--',
+        toleranceEntryAfternoon: '----',
+        infraccionEntryAfternoon: '----',
+        hourExitAfternoon: '--:--',
+        exitAfternoon: '--:--',
+      };
+
+      if (reportItem.type === 'Inasistencia') {
+        totalInasistencias++;
+      }
+
+      if (attendanceRecord) {
+        // Procesa las entradas
+        for (let entry of attendanceRecord.entrances) {
+          if (entry.shift === "MAÑANA") {
+            reportItem.hourEntryMorning = entry.hour
+            reportItem.entryMorning = entry.marketHour;
+            reportItem.toleranceEntryMoring = entry.tolerance
+            reportItem.infraccionEntryMorning = entry.infraccion
+            if(entry.infraccion !== '----') {
+              const minutosInfraccionMorning = extractMinutes(reportItem.infraccionEntryMorning);
+              totalInfraccionesMinutos += minutosInfraccionMorning;
+            }
+            
+          } else if (entry.shift === "TARDE") {
+            reportItem.hourEntryAfternoon = entry.hour;
+            reportItem.entryAfternoon = entry.marketHour
+            reportItem.toleranceEntryAfternoon = entry.tolerance;
+            reportItem.infraccionEntryAfternoon = entry.infraccion
+            if(entry.infraccion !== '----') {
+              const minutosInfraccionMorning = extractMinutes(reportItem.infraccionEntryAfternoon);
+              totalInfraccionesMinutos += minutosInfraccionMorning;
+            }
+          }
+        }
+
+        // Procesa las salidas
+        for (let exit of attendanceRecord.exits) {
+          if (exit.shift === "MAÑANA") {
+            reportItem.hourExitMorning = exit.hour;
+            reportItem.exitMorning = exit.marketHour;
+          } else if (exit.shift === "TARDE") {
+            reportItem.hourExitAfternoon = exit.hour;
+            reportItem.exitAfternoon = exit.marketHour;
+          }
+        }
+      }
+
+
+      if (isSpecial) {
+        reportItem.specialDay
+      }
+
+      this.attendanceReport.push(reportItem);
     });
-    return attendanceReport;
+
+    const diaPagable = Number(chargeInfo.salary) / diasMensuales 
+
+
+    // Calculos
+    const [mes, gestion] = formatMonth(initialDateObj);
+    const fechaIngreso = formatDate(createdAt);
+    const nombre_apellido = `${name} ${lastName}`;
+    const categoria = formatCategory(level);
+    const total_categoria = calcTotalCategory(chargeInfo.salary, level)
+    const total_ganado = Number(chargeInfo.salary) + total_categoria
+    const aporte_afps = total_ganado * 0.1271
+    const aporte_nacional_solidario = calcAporteNacSol(total_ganado)
+    const rc_iva = calcRcIva(total_ganado, aporte_afps)
+    const sancion_atrasos = calcSancionAtrasos(diaPagable, totalInfraccionesMinutos)
+    const sancion_faltas = calcSancionFalta(diaPagable, totalInasistencias)
+    const total_sanciones = sancion_atrasos + sancion_faltas;
+    const total_descuentos = aporte_afps + aporte_nacional_solidario + rc_iva + total_sanciones;
+    const total_aportaciones = calTotalAportaciones(aporte_afps, aporte_nacional_solidario, rc_iva);
+
+    // Realizar la consulta de sueldos
+    const planillaSueldos = {
+      detalle: {
+        mes,
+        gestion
+      },
+      fechaIngreso,
+      nombre_apellido,
+      cargo: chargeInfo.name,
+      haber_basico: chargeInfo.salary,
+      categoria,
+      total_categoria,
+      total_ganado,
+      descuentos: {
+        aporte_afps: aporte_afps.toFixed(2),
+        aporte_nacional_solidario,
+        rc_iva: rc_iva.toFixed(2),
+        total_aportaciones
+      },
+      inf_faltas_atrasos: {
+        min_atrasos: totalInfraccionesMinutos,
+        dias_de_falta: totalInasistencias,
+      },
+      otros_descuentos: {
+        sancion_atrasos,
+        sancion_faltas: (sancion_faltas).toFixed(2),
+        total_sanciones: (total_sanciones).toFixed(2),
+      },
+      total_descuentos: (total_descuentos).toFixed(2),
+      liquido_pagable: (total_ganado - total_descuentos).toFixed(2)
+    }
+
+    this.planillaSueldos1 = planillaSueldos
+
+    // Construir el reporte
+
+    return [this.attendanceReport, this.planillaSueldos1];
   }
 
 
@@ -185,7 +307,7 @@ export class AttendanceControlService {
 
     return {
       userId,
-      message: `Hola ${name}tu registro se realizó correctamente`
+      message: `Hola ${name} tu registro se realizó correctamente`
     }
   }
 
@@ -200,7 +322,7 @@ export class AttendanceControlService {
       // }
       await new Promise(resolve => setTimeout(resolve, 1000));
       // 65372fe486748e7e93bc75b4
-      return '65405a307f98668e51679ba2';
+      return '655fb5c3d2c7f65a2e2ab67f';
     } catch (error) {
       throw new BadRequestException('No se pudo mandar la imagen, intentelo de nuevo')
     }
@@ -577,12 +699,15 @@ export class AttendanceControlService {
 
   private getCurrentDateTimeInfo(): DateTimeInfo {
     const currentDate = new Date();
+    console.log({ currentDate });
+
     const currentDayOfWeekNumber = currentDate.getDay();
     const currentMinute = currentDate.getMinutes();
     const currentHour = currentDate.getHours();
     const currentDay = currentDate.getDate();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
+
 
     let month: any;
     if (currentMonth <= 9) {
@@ -649,13 +774,16 @@ export class AttendanceControlService {
     }
   }
 
+  // async findOneReport(): Promise<Buffer> {
+  //   const data = [ this.planillaSueldos1, this.attendanceReport ];
+  //   return await this.generateReportAttendance.generateReportAttendance(data);
+  // }
 
-  async findOneReport(personalId: string): Promise<Buffer> {
-    const attendancePersonal = await this.personalAttendanceModel.findOne({ personalId }).exec();
-    if (attendancePersonal) {
-      const { name, lastName, ci, schedule, attendanceDetail } = attendancePersonal
-      const data = { name, lastName, ci, schedule, attendanceDetail };
-      return await this.generateReportAttendance.generateReportAttendance(data);
+
+  async findOneReport(): Promise<Buffer> {
+    const data = [ this.planillaSueldos1, this.attendanceReport ];
+    if( data ) {
+      return await this.generateReportAttendance.generateReportAttendance( data);
     } else {
       throw new BadRequestException('No se pudo generar el pdf')
     }

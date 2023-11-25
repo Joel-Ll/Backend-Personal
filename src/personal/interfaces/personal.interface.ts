@@ -9,6 +9,8 @@ export interface IPersonal {
 	
 	email: string;
 
+	gender: string;
+
 	phone: string;
 
 	address: string;
@@ -23,5 +25,8 @@ export interface IPersonal {
 
 	schedule: string;
 
+	level: string;
+
 	isActive: boolean;
+	
 }

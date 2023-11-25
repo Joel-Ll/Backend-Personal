@@ -1,3 +1,5 @@
+
+
 import { BadRequestException, ConsoleLogger, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { CreateGenerateReportDto } from './dto/create-generate-report.dto';
 import { UpdateGenerateReportDto } from './dto/update-generate-report.dto';
@@ -14,14 +16,40 @@ export class GenerateReportService {
     private readonly scheduleService: ScheduleService,
   ) { }
 
-  async generateReportAttendance(data: any): Promise<Buffer> {
-    const { name, lastName, ci, schedule, attendanceDetail } = data;
-    const infoSchedule = await this.scheduleService.findOne(schedule);
-    const nameSchedule = infoSchedule.name;
-    console.log(nameSchedule)
-    console.log(attendanceDetail)
-    
+  // Arrglar la devolucion del mes 
 
+  async generateReportAttendance(data: any): Promise<Buffer> {
+    const planillaSueldo = data[0];
+    const planillaAsistencia = data[1];
+    console.log(planillaAsistencia);
+
+    // Informacion de la planilla de sueldo
+    const fullName = planillaSueldo.nombre_apellido;
+    const mes = planillaSueldo.detalle.mes;
+    const gestion = planillaSueldo.detalle.gestion;
+    const fechaIngreso = planillaSueldo.fechaIngreso;
+    const cargo = planillaSueldo.cargo;
+    const haberBasico = planillaSueldo.haber_basico;
+    const categoria = planillaSueldo.categoria;
+    const totalCategoria = planillaSueldo.total_categoria;
+    const totalGanado = planillaSueldo.total_ganado;
+    // Aportes
+    const aporteAfps = planillaSueldo.descuentos.aporte_afps;
+    const aporteNacSol = planillaSueldo.descuentos.aporte_nacional_solidario;
+    const aporteRcIva = planillaSueldo.descuentos.rc_iva;
+    const totalAportaciones = planillaSueldo.descuentos.total_aportaciones;
+    // Faltas y Retrasos
+    const minAtrasos = planillaSueldo.inf_faltas_atrasos.min_atrasos;
+    const diasFaltas = planillaSueldo.inf_faltas_atrasos.dias_de_falta;
+
+    // Descuentos por faltas y retrasos;
+    const sancionAtrasos = planillaSueldo.otros_descuentos.sancion_atrasos;
+    const sancionFaltas = planillaSueldo.otros_descuentos.sancion_faltas;
+    const totalSanciones = planillaSueldo.otros_descuentos.total_sanciones;
+
+    // Calculos totales;
+    const totalDescuentos = planillaSueldo.total_descuentos;
+    const liquidoPagable = planillaSueldo.liquido_pagable;
 
     // Creacion del Template de Reporte de asistencia
     const pdfBuffer: Buffer = await new Promise(resolve => {
@@ -51,41 +79,42 @@ export class GenerateReportService {
         // ------ Genera el estilo en la primera pagina
         if (pageNumber === 1) {
           // configuraciones para el encabezado
-          const imageWidth = 45;
-          const imageHeight = 45;
+          const imageWidth = 70;
+          const imageHeight = 70;
           const imageX = doc.page.width - 100;
           const imageY = 20;
           const textY = imageY + imageHeight / 2;
           const lineY = imageY + imageHeight + 10;
+          const linex = 0;
 
           // Agregar encabezado a la primera pagina
-          doc.image(join(process.cwd(), "uploads/uatf-logo.jpg"), imageX, imageY, { fit: [imageWidth, imageHeight], align: 'center' });
+          doc.image(join(process.cwd(), "uploads/logo_black.png"), imageX - 5, imageY + 10, { fit: [imageWidth, imageHeight], align: 'center' });
           doc.fontSize(10);
           doc.text("SISTEMA DE CONTROL PERSONAL", { align: 'center', valign: 'center', baseline: 'middle' }, textY);
           doc.moveDown(0.5);
           doc.font("Helvetica-Bold").fontSize(15);
-          doc.text("REPORTE DE ASISTENCIAS", { align: 'center', valign: 'center', baseline: 'middle' });
+          doc.text("PLANILLA DE SUELDOS", { align: 'center', valign: 'center', baseline: 'middle' });
           doc.moveTo(50, lineY)
             .lineTo(doc.page.width - 50, lineY)
             .stroke();
 
           doc.font("Helvetica-Bold")
-            .fontSize(13)
-            .text('Nombre Completo', 50, lineY + 20, { continued: true });
+            .fontSize(10)
+            .text('Nombre Completo', linex + 45, lineY + 20, { continued: true });
           doc.font("Helvetica")
-            .text(`: ${name} ${lastName}`, lineY - 10);
-          doc.moveDown(0.5);
+            .text(`: ${fullName}`, linex + 60);
 
           doc.font("Helvetica-Bold")
-            .text('Nro. CI.', 50, lineY + 40, { continued: true });
+            .text('Fecha de Ingreso', linex + 45, lineY + 40, { continued: true });
           doc.font("Helvetica")
-            .text(`: ${ci}`, lineY - 10);
-        }
-        // // Agregar el header de la tabla 
-        // doc.text('', 50, 160);
-        // doc.table(table) 
+            .text(`: ${fechaIngreso}`, linex + 64.8);
 
-        // Agregar footer a todas las paginas pagina
+          doc.font("Helvetica-Bold")
+            .text('Fecha de Reporte', linex + 45, lineY + 60, { continued: true });
+          doc.font("Helvetica")
+            .text(`: ${mes} - ${gestion}`, linex + 62.1);
+        }
+
         let bottom = doc.page.margins.bottom;
         let formattedDate = this.formatDateReportUsingInfo();
 
@@ -105,45 +134,98 @@ export class GenerateReportService {
       })
 
       doc.addPage();
-      doc.text('', 50, 160);
-      const renderTable = (data: any) => {
-        doc.text(`FECHA: ${data.date}`, 50, 160, { width: 500, align: 'center' });
-        doc.text('', 50, doc.y + 10);
-
-      //       {
-      //         "hora": "09:45",
-      //         "tolerancia": "10 min"
-      //         "marketHour": "09:48",
-      //         "infraccion": "0 min",
-      //         "type": "ENTRADA",
-      //         "status": "PUNTUAL",
-      //         "shift": "MAÑANA",
-      //         "_id": "652e90c0dfb32044117d5dd3"
-      //       }
-
-        const entranceRows = data.entrances.map(entry => [entry.marketHour, entry.infraccion, entry.type, entry.status, entry.shift]);
-        const exitRows = data.exits.map(exit => [exit.marketHour,exit.infraccion, exit.type, exit.status, exit.shift]);
-        const allRows = [...entranceRows, ...exitRows];
-
+      doc.text('',45, 230);
+      
+      const renderTableSalary = async () => {
         const table = {
-          headers: [
-            { label: 'HORA', property: 'hora', width: 85 },
-            { label: 'TOLERANCIA', property: 'tolerancia', width: 85 },
-            { label: 'MARCADO', property: 'marcado', width: 85 },
-            { label: 'INFRACCION', property: 'infraccion', width: 85 },
-            { label: 'TIPO', property: 'tipo', width: 85 },
-            { label: 'TURNO', property: 'turno', width: 85 },
+          // title: "Detalle de Remuneración",
+          subtitle: "Detalle de Remuneración",
+          headers: ["CARGO", "HABER BASICO", "CATEGORIA", "TOTAL CATEGORIA", "TOTAL GANADO"],
+          rows: [
+            [`${cargo}`, `${haberBasico} bs`, `${categoria}`, `${totalCategoria} bs`, `${totalGanado} bs`]
           ],
         }
+
+        await doc.table(table, { 
+          width: 500,
+        });
+        // or columnsSize
+        await doc.table(table, { 
+          columnsSize: [ 100, 100, 100, 100, 100 ],
+        });
         
       }
+
+      const renderTableAportaciones = async () => {
+        const table = {
+          // title: "Detalle de Remuneración",
+          subtitle: "Aportaciones Tributarias",
+          headers: ["AFPs", "A. NAC. SOL", "RC-IVA", "TOTAL APORTACIONES"],
+          rows: [
+            [`${aporteAfps} bs`, `${aporteNacSol} bs`, `${aporteRcIva} bs`, `${totalAportaciones} bs`]
+          ],
+        }
+
+        await doc.table(table, { 
+          width: 500,
+        });
+        // or columnsSize
+        await doc.table(table, { 
+          columnsSize: [ 125, 125, 125, 125],
+        });
+      }
+
+      const renderTableSanciones = async () => {
+        const table = {
+          // title: "Detalle de Remuneración",
+          subtitle: "Descuentos por sanciones",
+          headers: ["FALTAS", "RETRASOS", "DESC. FALTAS", "DESC. TRASOS", "TOTAL SANCIONES"],
+          rows: [
+            [`${diasFaltas} días`, `${minAtrasos} min`, `${sancionFaltas} bs`, `${sancionAtrasos} bs`, `${totalSanciones} bs`]
+          ],
+        }
+
+        await doc.table(table, { 
+          width: 500,
+        });
+        // or columnsSize
+        await doc.table(table, { 
+          columnsSize: [ 100, 100, 100, 100, 100],
+        });
+      }
+
+      const renderTableInfo = async () => {
+        const table = {
+          // title: "Detalle de Remuneración",
+          subtitle: "Detalle de Descuentos y Sueldo",
+          headers: ["TOTAL APORTACIONES", "TOTAL SANCIONES", "TOTAL DESCUENTOS", "LIQUIDO PAGABLE"],
+          rows: [
+            [`${totalAportaciones} bs`, `${totalSanciones} bs`, `${totalDescuentos} bs`, `${liquidoPagable} bs`]
+          ],
+        }
+
+        await doc.table(table, { 
+          width: 500,
+        });
+        // or columnsSize
+        await doc.table(table, { 
+          columnsSize: [ 125, 125, 125, 125],
+        });
+      }
+
       
-      attendanceDetail.forEach( detail => {
-        renderTable( detail );
-      });
 
 
-  
+      renderTableSalary();
+      renderTableAportaciones();
+      renderTableSanciones();
+      renderTableInfo();
+
+
+
+
+
+
       const buffer = []
       doc.on('data', buffer.push.bind(buffer))
       doc.on('end', () => {
@@ -208,105 +290,3 @@ export class GenerateReportService {
   }
 }
 
-
-      // doc.text('', 50, 160);
-
-      // const table = {
-      //   title: `${nameSchedule}`,
-      //   headers: [
-      //     { label: 'HORA', property: 'hora', width: 85 },
-      //     { label: 'TOLERANCIA', property: 'tolerancia', width: 85 },
-      //     { label: 'MARCADO', property: 'marcado', width: 85 },
-      //     { label: 'INFRACCION', property: 'infraccion', width: 85 },
-      //     { label: 'TIPO', property: 'tipo', width: 85 },
-      //     { label: 'TURNO', property: 'turno', width: 85 },
-      //   ],
-      //   rows: [['12:00','12:00','12:43','2 min', 'Entrada', 'Tarde'],['12:00','12:00','12:43','2 min', 'Entrada', 'Tarde']]
-      // }
-
-      // doc.table(table)      
-      // , {columnSize: [100, 10, 100, 100, 100, 100]}
-
-
-
-
-      // const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right; 
-      // const columnWidth = pageWidth / 6;
-      // let startX = doc.page.margins.left - 20;  
-      // let startY = 160;  
-
-      // const headers = ["Hora", "Tolerancia", "Marcado", "Infracción", "Tipo", "Turno"];
-
-      // headers.forEach((header) => {
-      //     doc.rect(startX, startY, columnWidth, 20).stroke();  // Dibuja el borde de la celda
-      //     doc.text(header, startX + (columnWidth / 2), startY + 5, { align: 'center', baseline: 'middle' });  // Texto alineado en el centro de la celda
-      //     startX += columnWidth;
-      // });
-
-      // // let startY = 160;
-      // // let startX = doc.page.margins.left - 20;
-      // const subHeaderY = startY + 80;
-      // let labelWidth = 150;
-      // let gap = 5;
-      // const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-      // const totalMargin = 20; // 20 en cada lado
-      // const usableWidth = pageWidth - totalMargin;
-      // const headerHeight = 35;
-
-      // const totalWidth = pageWidth;
-      // const columnWidths = {
-      //   horarioEstablecido: usableWidth * 0.35,  // 40% del ancho usable
-      //   horarioRegistrado: usableWidth * 0.4,  // 40% del ancho usable
-      //   descripcion: usableWidth * 0.4   // 20% del ancho usable
-      // };
-
-      // // Dibujando encabezado de la tabla
-      // doc.font('Helvetica-Bold').fontSize(10);
-
-      // doc.rect(startX, startY, columnWidths.horarioEstablecido, headerHeight).stroke();
-      // doc.text(`HORARIO\nESTABLECIDO`, startX + 5, startY + headerHeight / 4, { width: columnWidths.horarioEstablecido, align: 'center' });
-
-      // // Columna 'HORARIO REGISTRADO'
-      // doc.rect(startX + columnWidths.horarioEstablecido, startY, columnWidths.horarioRegistrado, headerHeight).stroke();
-      // doc.text('HORARIO REGISTRADO', startX + columnWidths.horarioEstablecido + 5, startY + 5 + headerHeight / 4, { width: columnWidths.horarioRegistrado, align: 'center' });
-
-      // // Columna 'DESCRIPCIÓN'
-      // doc.rect(startX + columnWidths.horarioEstablecido + columnWidths.horarioRegistrado, startY, columnWidths.descripcion, headerHeight).stroke();
-      // doc.text('DESCRIPCIÓN', startX + columnWidths.horarioEstablecido + columnWidths.horarioRegistrado + 5, startY + 5 + headerHeight / 4, { width: columnWidths.descripcion, align: 'center' });
-
-
-      // ----------------
-
-
-
-            // Generacion de la tabla de Horarios
-      // Info Schedule Data
-
-      // "attendanceDetail": [
-      //   {
-      //     "date": "17/10/2023",
-      //     "specialDay": "",
-      //     "entrances": [
-      //       {
-      //         "marketHour": "09:48",
-      //         "infraccion": "0 min",
-      //         "type": "ENTRADA",
-      //         "status": "PUNTUAL",
-      //         "shift": "MAÑANA",
-      //         "_id": "652e90c0dfb32044117d5dd3"
-      //       }
-      //     ],
-      //     "exits": [
-      //        {
-      //          "marketHour": "09:48",
-      //          "infraccion": "0 min",
-      //          "type": "ENTRADA",
-      //          "status": "PUNTUAL",
-      //          "shift": "MAÑANA",
-      //          "_id": "652e90c0dfb32044117d5dd3"
-      //        }
-      //      ],
-      //     }
-      //   ],
-      
-      // const row_attendance = [];

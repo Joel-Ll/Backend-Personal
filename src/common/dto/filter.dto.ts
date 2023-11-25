@@ -3,22 +3,22 @@ import { IsBoolean, IsDate, IsEnum, IsIn, IsNumber, IsOptional, IsString, IsUUID
 export class FilterDto {
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	name?: string;
 
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	lastName?: string;
 	
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	fullName?: string;
 
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	ci?: string;
 
 	@IsOptional()
@@ -28,17 +28,17 @@ export class FilterDto {
 
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	phone?: string;
 
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	address?: string;
 
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	nationality?: string;
 
 	@IsOptional()
@@ -57,7 +57,7 @@ export class FilterDto {
 export class FilterChargeDto {
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	name?: string;
 
 	@IsOptional()
@@ -76,7 +76,7 @@ export class FilterChargeDto {
 export class FilterScheduleDto {
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	name?: string;
 
 	@IsOptional()
@@ -95,7 +95,7 @@ export class FilterScheduleDto {
 export class FilterLicenseDto {
 	@IsOptional()
 	@IsString()
-	@MinLength(3)
+	// @MinLength(3)
 	licenseType?: string;
 
 	@IsOptional()

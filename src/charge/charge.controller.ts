@@ -80,4 +80,9 @@ export class ChargeController {
   update(@Param('id') id: string, @Body() updateChargeDto: UpdateChargeDto) {
     return this.chargeService.update(id, updateChargeDto);
   }
+
+  @Delete('delete-all-charges')
+  deleteUsers() {
+    return this.chargeService.delete()
+  }
 }

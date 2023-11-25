@@ -28,7 +28,6 @@ export class PersonalService {
     private httpService: HttpService
   ) { }
 
-
   async create(createPersonalDto: CreatePersonalDto) {
     const { file, unity, charge, schedule, } = createPersonalDto;
 
@@ -111,7 +110,7 @@ export class PersonalService {
       if (personal.file) {
         try {
           const res = await this.httpService.get(`${process.env.API_FILE}/file/${personal.file}`).toPromise();
-          personal.file = res.data.file._id;
+          personal.file = res.data.file.base64;
         } catch (error) {
           console.log('error', error);
         }
@@ -148,7 +147,7 @@ export class PersonalService {
     if (personal.file) {
       try {
         const res = await this.httpService.get(`${process.env.API_FILE}/file/${personal.file}`).toPromise();
-        personal.file = res.data.file;
+        personal.file = res.data.file.base64;
       } catch (error) {
         console.log(error);
       }
@@ -238,7 +237,7 @@ export class PersonalService {
       if (personal.file) {
         try {
           const res = await this.httpService.get(`${process.env.API_FILE}/file/${personal.file}`).toPromise();
-          personal.file = res.data.file;
+          personal.file = res.data.file.base64;
         } catch (error) {
           console.error("Error fetching file:", error);
           throw error.response?.data
@@ -305,9 +304,13 @@ export class PersonalService {
         try {
           const entities = await axios.get(`${process.env.API_UNITYS}/api/departments/departments`);
           const entityName = this.getEntityName(entities.data, unity);
-          if (entityName === '') {
+          // const entityName = this.getEntityName(entities.data, updatePersonalDto.unity);
+          if (!entityName) {
             throw new BadRequestException('Entity not found');
           }
+          // if (entityName === '') {
+          //   throw new BadRequestException('Entity not found');
+          // }
           updatePersonalDto = { ...updatePersonalDto, unity: entityName }
         } catch (error) {
           console.log(error);

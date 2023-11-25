@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsEmail, IsMobilePhone, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsMobilePhone, IsNotEmpty, IsNumber, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
 
 export class CreatePersonalDto {
 
@@ -10,6 +10,10 @@ export class CreatePersonalDto {
 	@IsString()
 	@IsNotEmpty()
 	lastName: string;
+
+	@IsString()
+	@IsNotEmpty()
+	gender: string;
 
 	@IsString()
 	@IsNotEmpty()
@@ -47,6 +51,10 @@ export class CreatePersonalDto {
 	@IsString()
 	@IsNotEmpty()
 	schedule: string;
+
+	@IsNumber()
+	@IsNotEmpty()
+	level: string;
 
 	isActive: boolean;
 }

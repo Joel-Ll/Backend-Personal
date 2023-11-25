@@ -26,7 +26,6 @@ export class LicenseService {
   }
 
   async findAll( personal: string ) {
-    // Arreglar la parte para verificar si se manda un id valido
     const license = await this.licenseModel.find({personal})
       .sort({ createdAt: -1 })
 

@@ -9,6 +9,8 @@ import { AppScheduleModule } from 'src/schedule/schedule.module';
 import { PersonalAttendance, PersonalAttendanceSchema } from './schemas/attendance-control.schema';
 import { GenerateReportModule } from 'src/generate-report/generate-report.module';
 import { LicenseModule } from 'src/license/license.module';
+import { ChargeModule } from 'src/charge/charge.module';
+import { Charge, ChargeSchema } from 'src/charge/schemas/charge.schema';
 
 @Module({
   controllers: [AttendanceControlController],
@@ -26,11 +28,16 @@ import { LicenseModule } from 'src/license/license.module';
       {
         name: Schedule.name, 
         schema: ScheduleSchema
+      },
+      {
+        name: Charge.name, 
+        schema: ChargeSchema
       }
     ]),
     PersonalModule,
     AppScheduleModule,
     LicenseModule,
+    ChargeModule,
     forwardRef(() => GenerateReportModule)
   ],
   exports: [

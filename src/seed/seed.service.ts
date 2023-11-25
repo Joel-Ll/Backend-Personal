@@ -30,6 +30,9 @@ export class SeedService {
       });
     }
   }
+  
+
+  
 
   // private async insertNewPersonal() {
   //   const seedPersonal = generatePersonnelData();
